@@ -2,6 +2,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
 }
 
 body {
@@ -9,16 +10,18 @@ body {
     background-color: #f0f0f0;
     display: flex;
     justify-content: center;
-    padding: 20px;
+    padding: 10px;
+    touch-action: manipulation; /* 优化触摸操作，禁用双击缩放 */
 }
 
 .container {
     background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    padding: 20px;
+    padding: 15px;
     max-width: 800px;
     width: 100%;
+    overflow-x: auto; /* 允许在小屏幕上水平滚动 */
 }
 
 h1 {
@@ -93,18 +96,19 @@ button:hover {
 
 .game-board {
     display: grid;
-    grid-template-columns: repeat(var(--cols, 10), 30px);
-    grid-template-rows: repeat(var(--rows, 10), 30px);
+    grid-template-columns: repeat(var(--cols, 10), var(--cell-size, 30px));
+    grid-template-rows: repeat(var(--rows, 10), var(--cell-size, 30px));
     gap: 1px;
     margin: 0 auto;
     background-color: #bdbdbd;
     border: 3px solid #7b7b7b;
     padding: 3px;
+    touch-action: manipulation; /* 优化触摸操作 */
 }
 
 .cell {
-    width: 30px;
-    height: 30px;
+    width: var(--cell-size, 30px);
+    height: var(--cell-size, 30px);
     background-color: #c0c0c0;
     display: flex;
     justify-content: center;
@@ -113,6 +117,7 @@ button:hover {
     cursor: pointer;
     user-select: none;
     border: 2px outset #f5f5f5;
+    font-size: calc(var(--cell-size, 30px) * 0.6); /* 根据单元格大小调整字体 */
 }
 
 .cell.revealed {
@@ -161,4 +166,91 @@ button:hover {
 
 .hidden {
     display: none;
+}
+
+/* 添加响应式设计的媒体查询 */
+:root {
+    --cell-size: 30px; /* 默认单元格大小 */
+}
+
+/* 游戏控制按钮样式优化 */
+#new-game-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    font-size: 16px;
+}
+
+/* 移动端长按提示 */
+.mobile-controls {
+    display: block; /* 始终显示，方便测试 */
+    margin: 10px 0;
+    text-align: center;
+    background-color: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* 平板设备 */
+@media (max-width: 768px) {
+    :root {
+        --cell-size: 25px; /* 平板上的单元格大小 */
+    }
+    
+    .game-controls {
+        flex-direction: column;
+    }
+    
+    .difficulty-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    select, input {
+        width: 100%;
+        margin-top: 5px;
+    }
+    
+    .mobile-controls {
+        display: block;
+    }
+}
+
+/* 手机设备 */
+@media (max-width: 480px) {
+    :root {
+        --cell-size: 20px; /* 手机上的单元格大小 */
+    }
+    
+    body {
+        padding: 5px;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+    
+    h1 {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+    
+    .game-info {
+        flex-direction: column;
+        gap: 5px;
+        align-items: flex-start;
+    }
+    
+    .face {
+        align-self: center;
+        margin: 5px 0;
+    }
+    
+    /* 超小屏幕上的极小难度调整 */
+    @media (max-width: 320px) {
+        :root {
+            --cell-size: 16px; /* 超小屏幕上的单元格大小 */
+        }
+    }
 }

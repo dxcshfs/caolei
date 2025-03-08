@@ -10,6 +10,14 @@ document.addEventListener('DOMContentLoaded', function() {
     let timer = 0;
     let timerInterval;
     let firstClick = true;
+    let isMobile = false;
+    let flagMode = false;
+    let longPressTimer;
+    let touchStartTime = 0;
+    let touchTimeout;
+    
+    // 检测是否为移动设备（为了测试，我们暂时将所有设备都视为移动设备）
+    isMobile = true; // 强制启用移动端功能，方便在桌面浏览器中测试
     
     // DOM元素
     const boardElement = document.getElementById('game-board');
@@ -23,6 +31,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const timerElement = document.getElementById('timer');
     const faceElement = document.getElementById('face');
     const gameMessageElement = document.getElementById('game-message');
+    const flagModeCheckbox = document.getElementById('flag-mode');
+    const flagModeContainer = document.getElementById('flag-mode-container');
     
     // 初始化游戏
     initGame();
@@ -31,6 +41,38 @@ document.addEventListener('DOMContentLoaded', function() {
     difficultySelect.addEventListener('change', toggleCustomSettings);
     newGameBtn.addEventListener('click', startNewGame);
     faceElement.addEventListener('click', startNewGame);
+    
+    // 旗帜模式切换（仅在移动设备上显示）
+    if (isMobile) {
+        flagModeContainer.style.display = 'block';
+        flagModeCheckbox.addEventListener('change', function() {
+            flagMode = this.checked;
+        });
+    } else {
+        flagModeContainer.style.display = 'none';
+    }
+    
+    // 设置适合当前设备的单元格大小
+    function setCellSize() {
+        const viewportWidth = window.innerWidth;
+        let cellSize = 30; // 默认大小
+        
+        if (viewportWidth <= 320) {
+            cellSize = 16;
+        } else if (viewportWidth <= 480) {
+            cellSize = 20;
+        } else if (viewportWidth <= 768) {
+            cellSize = 25;
+        }
+        
+        document.documentElement.style.setProperty('--cell-size', `${cellSize}px`);
+    }
+    
+    // 初始设置单元格大小
+    setCellSize();
+    
+    // 窗口大小改变时重新设置单元格大小
+    window.addEventListener('resize', setCellSize);
     
     // 切换自定义设置显示
     function toggleCustomSettings() {
@@ -128,6 +170,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 cell.addEventListener('click', handleCellClick);
                 cell.addEventListener('contextmenu', handleCellRightClick);
                 
+                // 为移动设备添加触摸事件
+                if (isMobile) {
+                    cell.addEventListener('touchstart', handleTouchStart);
+                    cell.addEventListener('touchend', handleTouchEnd);
+                    cell.addEventListener('touchmove', handleTouchMove);
+                    cell.addEventListener('touchcancel', handleTouchCancel);
+                }
+                
                 boardElement.appendChild(cell);
             }
         }
@@ -191,6 +241,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 如果单元格已被标记为旗帜，不执行任何操作
         if (cell.classList.contains('flagged')) {
+            return;
+        }
+        
+        // 如果在旗帜模式下，标记旗帜而不是揭示单元格
+        if (flagMode && !cell.classList.contains('revealed')) {
+            if (cell.classList.contains('flagged')) {
+                cell.classList.remove('flagged');
+                minesLeft++;
+            } else {
+                cell.classList.add('flagged');
+                minesLeft--;
+            }
+            updateMinesLeftDisplay();
+            checkWinCondition();
             return;
         }
         
@@ -352,5 +416,93 @@ document.addEventListener('DOMContentLoaded', function() {
     // 更新剩余雷数显示
     function updateMinesLeftDisplay() {
         minesLeftElement.textContent = minesLeft;
+    }
+    
+    // 触摸事件处理 - 开始触摸
+    function handleTouchStart(event) {
+        if (gameOver) return;
+        
+        // 防止触摸事件同时触发鼠标事件
+        event.preventDefault();
+        
+        const touch = event.touches[0];
+        const cell = event.target;
+        
+        // 记录触摸开始时间，用于检测长按
+        touchStartTime = new Date().getTime();
+        
+        // 设置长按定时器
+        touchTimeout = setTimeout(function() {
+            // 长按操作 - 模拟右键点击（标记旗帜）
+            if (!cell.classList.contains('revealed')) {
+                if (cell.classList.contains('flagged')) {
+                    cell.classList.remove('flagged');
+                    minesLeft++;
+                } else {
+                    cell.classList.add('flagged');
+                    minesLeft--;
+                }
+                updateMinesLeftDisplay();
+                checkWinCondition();
+            }
+        }, 500); // 500毫秒长按阈值
+    }
+    
+    // 触摸事件处理 - 结束触摸
+    function handleTouchEnd(event) {
+        // 防止触摸事件同时触发鼠标事件
+        event.preventDefault();
+        
+        // 清除长按定时器
+        clearTimeout(touchTimeout);
+        
+        const cell = event.target;
+        const touchDuration = new Date().getTime() - touchStartTime;
+        
+        // 如果是短触摸（点击），且不在旗帜模式下
+        if (touchDuration < 500 && !flagMode) {
+            // 模拟点击操作
+            if (!cell.classList.contains('flagged')) {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                
+                // 如果是第一次点击，放置地雷并开始计时
+                if (firstClick) {
+                    placeMines(row, col);
+                    startTimer();
+                    firstClick = false;
+                    gameStarted = true;
+                }
+                
+                // 揭示单元格
+                revealCell(row, col);
+            }
+        }
+        // 如果在旗帜模式下，短触摸也标记旗帜
+        else if (flagMode) {
+            if (!cell.classList.contains('revealed')) {
+                if (cell.classList.contains('flagged')) {
+                    cell.classList.remove('flagged');
+                    minesLeft++;
+                } else {
+                    cell.classList.add('flagged');
+                    minesLeft--;
+                }
+                updateMinesLeftDisplay();
+                checkWinCondition();
+            }
+        }
+    }
+    
+    // 触摸事件处理 - 移动触摸
+    function handleTouchMove(event) {
+        // 如果手指移动，取消长按操作
+        clearTimeout(touchTimeout);
+    }
+    
+    // 触摸事件处理 - 取消触摸
+    function handleTouchCancel(event) {
+        // 取消长按操作
+        clearTimeout(touchTimeout);
     }
 });
